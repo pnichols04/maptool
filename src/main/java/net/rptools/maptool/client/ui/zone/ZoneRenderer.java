@@ -310,7 +310,7 @@ public class ZoneRenderer extends JComponent
 
   public void clearShowPaths() {
     showPathList.clear();
-    repaint();
+    invalidate();
   }
 
   public Scale getZoneScale() {
@@ -332,7 +332,7 @@ public class ZoneRenderer extends JComponent
               // flushFog = true;
             }
             visibleScreenArea = null;
-            repaint();
+            invalidate();
           }
         });
   }
@@ -358,7 +358,7 @@ public class ZoneRenderer extends JComponent
       return;
     }
     tokenUnderMouse = token;
-    repaint();
+    invalidate();
   }
 
   @Override
@@ -375,7 +375,7 @@ public class ZoneRenderer extends JComponent
       }
     }
     selectionSetMap.put(keyToken, new SelectionSet(playerId, keyToken, tokenList));
-    repaint(); // Jamz: Seems to have no affect?
+    invalidate(); // Jamz: Seems to have no affect?
   }
 
   public boolean hasMoveSelectionSetMoved(GUID keyToken, ZonePoint point) {
@@ -397,7 +397,7 @@ public class ZoneRenderer extends JComponent
     }
     Token token = zone.getToken(keyToken);
     set.setOffset(offset.x - token.getX(), offset.y - token.getY());
-    repaint(); // Jamz: may cause flicker when using AI
+    invalidate(); // Jamz: may cause flicker when using AI
   }
 
   public void toggleMoveSelectionSetWaypoint(GUID keyToken, ZonePoint location) {
@@ -406,7 +406,7 @@ public class ZoneRenderer extends JComponent
       return;
     }
     set.toggleWaypoint(location);
-    repaint();
+    invalidate();
   }
 
   public ZonePoint getLastWaypoint(GUID keyToken) {
@@ -422,7 +422,7 @@ public class ZoneRenderer extends JComponent
     if (set == null) {
       return;
     }
-    repaint();
+    invalidate();
   }
 
   public void commitMoveSelectionSet(GUID keyTokenId) {
@@ -617,7 +617,7 @@ public class ZoneRenderer extends JComponent
 
     setViewOffset(x, y);
 
-    repaint();
+    invalidate();
   }
 
   public void centerOn(CellPoint point) {
@@ -680,13 +680,13 @@ public class ZoneRenderer extends JComponent
     renderedLightMap = null;
     renderedAuraMap = null;
     zoneView.flush();
-    repaint();
+    invalidate();
   }
 
   public void flushFog() {
     flushFog = true;
     visibleScreenArea = null;
-    repaint();
+    invalidate();
   }
 
   public Zone getZone() {
@@ -784,6 +784,7 @@ public class ZoneRenderer extends JComponent
 
   @Override
   public void paintComponent(Graphics g) {
+    log.info("PaintComponent entered.");
     if (timer == null) timer = new CodeTimer("ZoneRenderer.renderZone");
     timer.setEnabled(AppState.isCollectProfilingData() || log.isDebugEnabled());
     timer.clear();
@@ -2738,7 +2739,7 @@ public class ZoneRenderer extends JComponent
     if (!keepSelectedTokenSet) selectedTokenSet.clear();
     else keepSelectedTokenSet = false; // Always reset it back, temp boolean only
 
-    repaint();
+    invalidate();
   }
 
   /**
@@ -3649,7 +3650,7 @@ public class ZoneRenderer extends JComponent
     // flushFog = true; // could call flushFog() but also clears visibleScreenArea and I don't know
     // if we want
     // that...
-    repaint();
+    invalidate();
   }
 
   public boolean selectToken(GUID tokenGUID) {
@@ -3661,7 +3662,7 @@ public class ZoneRenderer extends JComponent
     MapTool.getFrame().resetTokenPanels();
     HTMLFrameFactory.selectedListChanged();
     // flushFog = true;
-    repaint();
+    invalidate();
     return true;
   }
 
@@ -3674,7 +3675,7 @@ public class ZoneRenderer extends JComponent
     }
     addToSelectionHistory(selectedTokenSet);
 
-    repaint();
+    invalidate();
     MapTool.getFrame().resetTokenPanels();
     HTMLFrameFactory.selectedListChanged();
   }
@@ -3696,7 +3697,7 @@ public class ZoneRenderer extends JComponent
     selectedTokenSet.clear();
     MapTool.getFrame().resetTokenPanels();
     HTMLFrameFactory.selectedListChanged();
-    repaint();
+    invalidate();
   }
 
   public void undoSelectToken() {
@@ -3729,7 +3730,7 @@ public class ZoneRenderer extends JComponent
     // disable the undo button.
     MapTool.getFrame().resetTokenPanels();
     HTMLFrameFactory.selectedListChanged();
-    repaint();
+    invalidate();
   }
 
   private void addToSelectionHistory(Set<GUID> selectionSet) {
@@ -3900,7 +3901,7 @@ public class ZoneRenderer extends JComponent
 
   public void adjustGridSize(int delta) {
     zone.getGrid().setSize(Math.max(0, zone.getGrid().getSize() + delta));
-    repaint();
+    invalidate();
   }
 
   public void moveGridBy(int dx, int dy) {
@@ -3917,7 +3918,7 @@ public class ZoneRenderer extends JComponent
       gridOffsetX = gridOffsetX - (int) zone.getGrid().getCellWidth();
     }
     zone.getGrid().setOffset(gridOffsetX, gridOffsetY);
-    repaint();
+    invalidate();
   }
 
   /**
@@ -3956,7 +3957,7 @@ public class ZoneRenderer extends JComponent
   /** This makes sure that any image updates get refreshed. This could be a little smarter. */
   @Override
   public boolean imageUpdate(Image img, int infoflags, int x, int y, int w, int h) {
-    repaint();
+    invalidate();
     return super.imageUpdate(img, infoflags, x, y, w, h);
   }
 
@@ -4464,7 +4465,7 @@ public class ZoneRenderer extends JComponent
     AppActions.copyTokens(tokens);
     AppActions.updateActions();
     requestFocusInWindow();
-    repaint();
+    invalidate();
   }
 
   /**
@@ -4552,7 +4553,7 @@ public class ZoneRenderer extends JComponent
         flushFog = true;
       }
       MapTool.getFrame().updateTokenTree();
-      repaint();
+      invalidate();
     }
   }
 
@@ -4574,7 +4575,7 @@ public class ZoneRenderer extends JComponent
 
   public void setHighlightCommonMacros(List<Token> affectedTokens) {
     highlightCommonMacros = affectedTokens;
-    repaint();
+    invalidate();
   }
 
   // End token common macro identification
