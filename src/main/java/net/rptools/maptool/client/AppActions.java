@@ -48,7 +48,6 @@ import java.util.zip.ZipOutputStream;
 import javax.swing.AbstractAction;
 import javax.swing.Action;
 import javax.swing.ImageIcon;
-import javax.swing.JButton;
 import javax.swing.JComponent;
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
@@ -146,6 +145,7 @@ public class AppActions {
 
   private static Set<Token> tokenCopySet = null;
   public static final int menuShortcut = getMenuShortcutKeyMask();
+  private static boolean keepIdsOnPaste = false;
 
   private static int getMenuShortcutKeyMask() {
     int key = Toolkit.getDefaultToolkit().getMenuShortcutKeyMask();
@@ -855,6 +855,7 @@ public class AppActions {
     }
     if (anythingDeleted) {
       MapTool.getFrame().getCurrentZoneRenderer().clearSelectedTokens();
+      keepIdsOnPaste = true; // pasted tokens should have same ids as cut ones
     } else {
       MapTool.playSound(MapTool.SND_INVALID_OPERATION);
     }
@@ -977,6 +978,8 @@ public class AppActions {
           topLeft = originalToken;
         }
         Token newToken = new Token(originalToken);
+        newToken.setId(
+            originalToken.getId()); // keep same ids. Will be changed on paste if need be.
         tokenCopySet.add(newToken);
       }
       /*
@@ -998,6 +1001,7 @@ public class AppActions {
         token.setX(token.getX() - x);
         token.setY(token.getY() - y);
       }
+      keepIdsOnPaste = false; // if last operation is Copy, don't keep token ids.
     } else {
       MapTool.playSound(MapTool.SND_INVALID_OPERATION);
     }
@@ -1027,6 +1031,7 @@ public class AppActions {
           }
           ZonePoint zonePoint = screenPoint.convertToZone(renderer);
           pasteTokens(zonePoint, renderer.getActiveLayer());
+          keepIdsOnPaste = false; // once pasted, subsequent paste should have new ids
           renderer.repaint();
         }
       };
@@ -1079,6 +1084,9 @@ public class AppActions {
 
     for (Token origToken : tokenList) {
       Token token = new Token(origToken);
+      if (keepIdsOnPaste) {
+        token.setId(origToken.getId()); // keep ids if first paste since cut
+      }
 
       // need this here to get around times when a token is copied and pasted into the
       // same zone, such as a framework "template"
@@ -1356,6 +1364,24 @@ public class AppActions {
         public void execute(ActionEvent e) {
           AppState.setCollectProfilingData(!AppState.isCollectProfilingData());
           MapTool.getProfilingNoteFrame().setVisible(AppState.isCollectProfilingData());
+        }
+      };
+
+  public static final Action TOGGLE_LOG_CONSOLE =
+      new DefaultClientAction() {
+        {
+          init("action.openLogConsole");
+        }
+
+        @Override
+        public boolean isSelected() {
+          return AppState.isLoggingToConsole();
+        }
+
+        @Override
+        public void execute(ActionEvent e) {
+          AppState.setLoggingToConsole(!AppState.isLoggingToConsole());
+          MapTool.getLogConsoleNoteFrame().setVisible(AppState.isLoggingToConsole());
         }
       };
 
@@ -2286,6 +2312,7 @@ public class AppActions {
           JFileChooser chooser = new CampaignPreviewFileChooser();
           chooser.setDialogTitle(I18N.getText("msg.title.loadCampaign"));
           chooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
+          chooser.setFileFilter(MapTool.getFrame().getCmpgnFileFilter());
 
           if (chooser.showOpenDialog(MapTool.getFrame()) == JFileChooser.APPROVE_OPTION) {
             File campaignFile = chooser.getSelectedFile();
@@ -2639,59 +2666,14 @@ public class AppActions {
         @Override
         public void execute(ActionEvent ae) {
           boolean isConnected = !MapTool.isHostingServer() && !MapTool.isPersonalServer();
-          if (getSeenWarning() == false) {
-            // If we're connected to a remote server and we are logged in as GM, this is true
-            boolean isRemoteGM =
-                isConnected && MapTool.getPlayer() != null && MapTool.getPlayer().isGM();
-            isRemoteGM = true;
-            if (isRemoteGM) {
-              // Returns true if they select OK and false otherwise
-              // setSeenWarning(MapTool.confirm("action.loadMap.warning"));
-              ImageIcon icon = null;
-              try {
-                Image img = ImageUtil.getImage("net/rptools/maptool/client/image/book_open.png");
-                img = ImageUtil.createCompatibleImage(img, 16, 16, null);
-                icon = new ImageIcon(img);
-              } catch (IOException ex) {
-              }
-              JButton b = new JButton("Help", icon);
-              Object[] options = {b, "Yes", "No"};
-              int result =
-                  JOptionPane.showOptionDialog(
-                      MapTool.getFrame(),
-                      // FIXME This string doesn't render as HTML properly -- no BOLD shows up?!
-                      "<html>This is an <b>experimental</b> feature.  Save your campaign before using this feature (you are a GM logged in remotely).",
-                      I18N.getText("msg.title.messageDialogConfirm"),
-                      JOptionPane.DEFAULT_OPTION,
-                      JOptionPane.WARNING_MESSAGE,
-                      null,
-                      options,
-                      options[2]);
-              if (result == 1) setSeenWarning(true); // Yes
-              else {
-                if (result == 0) { // Help
-                  // TODO We really need a better way to disseminate this information. Perhaps we
-                  // could assign every
-                  // external link a UUID, then have MapTool load a mapping from UUID-to-URL at
-                  // runtime? The
-                  // mapping could come from the rptools.net site initially and be cached for future
-                  // use, with a
-                  // periodic "Check for new updates" option available from the Help menu...?
-                  MapTool.showDocument("http://forums.rptools.net/viewtopic.php?f=3&t=23614");
-                }
-                return;
-              }
-            } else setSeenWarning(true);
-          }
-          if (getSeenWarning()) {
-            JFileChooser chooser = new MapPreviewFileChooser();
-            chooser.setDialogTitle(I18N.getText("msg.title.loadMap"));
-            chooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
+          JFileChooser chooser = new MapPreviewFileChooser();
+          chooser.setDialogTitle(I18N.getText("msg.title.loadMap"));
+          chooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
+          chooser.setFileFilter(MapTool.getFrame().getMapFileFilter());
 
-            if (chooser.showOpenDialog(MapTool.getFrame()) == JFileChooser.APPROVE_OPTION) {
-              File mapFile = chooser.getSelectedFile();
-              loadMap(mapFile);
-            }
+          if (chooser.showOpenDialog(MapTool.getFrame()) == JFileChooser.APPROVE_OPTION) {
+            File mapFile = chooser.getSelectedFile();
+            loadMap(mapFile);
           }
         }
       };
