@@ -1000,43 +1000,44 @@ public class ZoneRenderer extends JComponent
    * #paintComponent(Graphics)} calls this method, then adds the two optional strings, "Map not
    * visible to players" and "Player View" as appropriate.
    *
-   * @param g2d Graphics2D object normally passed in by {@link #paintComponent(Graphics)}
-   * @param view PlayerView object that describes whether the view is a Player or GM view
+   * @param graphics Graphics2D object normally passed in by {@link #paintComponent(Graphics)}
+   * @param playerView PlayerView object that describes whether the view is a Player or GM view
    */
-  public void renderZone(Graphics2D g2d, PlayerView view) {
+  public void renderZone(Graphics2D graphics, PlayerView playerView) {
     timer.start("setup");
-    g2d.setFont(AppStyle.labelFont);
-    Object oldAA = SwingUtil.useAntiAliasing(g2d);
+    var savedFont = graphics.getFont();
+    graphics.setFont(AppStyle.labelFont);
+    var savedAA = SwingUtil.useAntiAliasing(graphics);
 
-    Rectangle viewRect = new Rectangle(getSize().width, getSize().height);
-    Area viewArea = new Area(viewRect);
+    Rectangle displayRect = new Rectangle(getSize().width, getSize().height);
+    Area viewArea = new Area(displayRect);
     // much of the raster code assumes the user clip is set
     boolean resetClip = false;
-    if (g2d.getClipBounds() == null) {
-      g2d.setClip(0, 0, viewRect.width, viewRect.height);
+    if (graphics.getClipBounds() == null) {
+      graphics.setClip(0, 0, displayRect.width, displayRect.height);
       resetClip = true;
     }
     // Are we still waiting to show the zone ?
     if (isLoading()) {
-      g2d.setColor(Color.black);
-      g2d.fillRect(0, 0, viewRect.width, viewRect.height);
-      GraphicsUtil.drawBoxedString(g2d, loadingProgress, viewRect.width / 2, viewRect.height / 2);
+      graphics.setColor(Color.black);
+      graphics.fillRect(0, 0, displayRect.width, displayRect.height);
+      GraphicsUtil.drawBoxedString(graphics, loadingProgress, displayRect.width / 2, displayRect.height / 2);
       return;
     }
     if (MapTool.getCampaign().isBeingSerialized()) {
-      g2d.setColor(Color.black);
-      g2d.fillRect(0, 0, viewRect.width, viewRect.height);
+      graphics.setColor(Color.black);
+      graphics.fillRect(0, 0, displayRect.width, displayRect.height);
       GraphicsUtil.drawBoxedString(
-          g2d, "    Please Wait    ", viewRect.width / 2, viewRect.height / 2);
+          graphics, "    Please Wait    ", displayRect.width / 2, displayRect.height / 2);
       return;
     }
     if (zone == null) {
       return;
     }
-    if (lastView != null && !lastView.equals(view)) {
+    if (lastView != null && !lastView.equals(playerView)) {
       invalidateCurrentViewCache();
     }
-    lastView = view;
+    lastView = playerView;
 
     // Clear internal state
     tokenLocationMap.clear();
@@ -1064,7 +1065,7 @@ public class ZoneRenderer extends JComponent
 
     if (visibleScreenArea == null && zoneView.isUsingVision()) {
       timer.start("ZoneRenderer-getVisibleArea");
-      Area a = zoneView.getVisibleArea(view);
+      Area a = zoneView.getVisibleArea(playerView);
       timer.stop("ZoneRenderer-getVisibleArea");
 
       timer.start("createTransformedArea");
@@ -1103,20 +1104,20 @@ public class ZoneRenderer extends JComponent
     // Rendering pipeline
     if (zone.drawBoard()) {
       timer.start("board");
-      renderBoard(g2d, view);
+      renderBoard(graphics, playerView);
       timer.stop("board");
     }
     if (Zone.Layer.BACKGROUND.isEnabled()) {
       List<DrawnElement> drawables = zone.getBackgroundDrawnElements();
       // if (!drawables.isEmpty()) {
       timer.start("drawableBackground");
-      renderDrawableOverlay(g2d, backgroundDrawableRenderer, view, drawables);
+      renderDrawableOverlay(graphics, backgroundDrawableRenderer, playerView, drawables);
       timer.stop("drawableBackground");
       // }
       List<Token> background = zone.getBackgroundStamps(false);
       if (!background.isEmpty()) {
         timer.start("tokensBackground");
-        renderTokens(g2d, background, view);
+        renderTokens(graphics, background, playerView);
         timer.stop("tokensBackground");
       }
     }
@@ -1125,12 +1126,12 @@ public class ZoneRenderer extends JComponent
       List<DrawnElement> drawables = zone.getObjectDrawnElements();
       // if (!drawables.isEmpty()) {
       timer.start("drawableObjects");
-      renderDrawableOverlay(g2d, objectDrawableRenderer, view, drawables);
+      renderDrawableOverlay(graphics, objectDrawableRenderer, playerView, drawables);
       timer.stop("drawableObjects");
       // }
     }
     timer.start("grid");
-    renderGrid(g2d, view);
+    renderGrid(graphics, playerView);
     timer.stop("grid");
 
     if (Zone.Layer.OBJECT.isEnabled()) {
@@ -1138,17 +1139,17 @@ public class ZoneRenderer extends JComponent
       List<Token> stamps = zone.getStampTokens(false);
       if (!stamps.isEmpty()) {
         timer.start("tokensStamp");
-        renderTokens(g2d, stamps, view);
+        renderTokens(graphics, stamps, playerView);
         timer.stop("tokensStamp");
       }
     }
     if (Zone.Layer.TOKEN.isEnabled()) {
       timer.start("lights");
-      renderLights(g2d, view);
+      renderLights(graphics, playerView);
       timer.stop("lights");
 
       timer.start("auras");
-      renderAuras(g2d, view);
+      renderAuras(graphics, playerView);
       timer.stop("auras");
     }
 
@@ -1177,22 +1178,22 @@ public class ZoneRenderer extends JComponent
       List<DrawnElement> drawables = zone.getDrawnElements();
       // if (!drawables.isEmpty()) {
       timer.start("drawableTokens");
-      renderDrawableOverlay(g2d, tokenDrawableRenderer, view, drawables);
+      renderDrawableOverlay(graphics, tokenDrawableRenderer, playerView, drawables);
       timer.stop("drawableTokens");
       // }
 
-      if (view.isGMView()) {
+      if (playerView.isGMView()) {
         if (Zone.Layer.GM.isEnabled()) {
           drawables = zone.getGMDrawnElements();
           // if (!drawables.isEmpty()) {
           timer.start("drawableGM");
-          renderDrawableOverlay(g2d, gmDrawableRenderer, view, drawables);
+          renderDrawableOverlay(graphics, gmDrawableRenderer, playerView, drawables);
           timer.stop("drawableGM");
           // }
           List<Token> stamps = zone.getGMStamps(false);
           if (!stamps.isEmpty()) {
             timer.start("tokensGM");
-            renderTokens(g2d, stamps, view);
+            renderTokens(graphics, stamps, playerView);
             timer.stop("tokensGM");
           }
         }
@@ -1200,11 +1201,11 @@ public class ZoneRenderer extends JComponent
       List<Token> tokens = zone.getTokens(false);
       if (!tokens.isEmpty()) {
         timer.start("tokens");
-        renderTokens(g2d, tokens, view);
+        renderTokens(graphics, tokens, playerView);
         timer.stop("tokens");
       }
       timer.start("unowned movement");
-      showBlockedMoves(g2d, view, getUnOwnedMovementSet(view));
+      showBlockedMoves(graphics, playerView, getUnOwnedMovementSet(playerView));
       timer.stop("unowned movement");
 
       // Moved below, after the renderFog() call...
@@ -1232,10 +1233,10 @@ public class ZoneRenderer extends JComponent
     // Perhaps we should draw the fog first and use hard fog to determine whether labels need to be
     // drawn?
     // (This method has it's own 'timer' calls)
-    renderLabels(g2d, view);
+    renderLabels(graphics, playerView);
 
     // (This method has it's own 'timer' calls)
-    if (zone.hasFog()) renderFog(g2d, view);
+    if (zone.hasFog()) renderFog(graphics, playerView);
 
     if (Zone.Layer.TOKEN.isEnabled()) {
       // Jamz: If there is fog or vision we may need to re-render vision-blocking type tokens
@@ -1244,7 +1245,7 @@ public class ZoneRenderer extends JComponent
       List<Token> vblTokens = zone.getTokensAlwaysVisible();
       if (!vblTokens.isEmpty()) {
         timer.start("tokens - always visible");
-        renderTokens(g2d, vblTokens, view, true);
+        renderTokens(graphics, vblTokens, playerView, true);
         timer.stop("tokens - always visible");
       }
 
@@ -1255,12 +1256,12 @@ public class ZoneRenderer extends JComponent
       Collections.sort(sortedTokens, zone.getFigureZOrderComparator());
       if (!tokens.isEmpty()) {
         timer.start("tokens - figures");
-        renderTokens(g2d, sortedTokens, view, true);
+        renderTokens(graphics, sortedTokens, playerView, true);
         timer.stop("tokens - figures");
       }
 
       timer.start("owned movement");
-      showBlockedMoves(g2d, view, getOwnedMovementSet(view));
+      showBlockedMoves(graphics, playerView, getOwnedMovementSet(playerView));
       timer.stop("owned movement");
 
       // Text associated with tokens being moved is added to a list to be drawn after, i.e. on top
@@ -1270,18 +1271,18 @@ public class ZoneRenderer extends JComponent
       // will be
       // visible.
       timer.start("token name/labels");
-      renderRenderables(g2d);
+      renderRenderables(graphics);
       timer.stop("token name/labels");
     }
 
     // if (zone.visionType ...)
-    if (view.isGMView()) {
+    if (playerView.isGMView()) {
       timer.start("visionOverlayGM");
-      renderGMVisionOverlay(g2d, view);
+      renderGMVisionOverlay(graphics, playerView);
       timer.stop("visionOverlayGM");
     } else {
       timer.start("visionOverlayPlayer");
-      renderPlayerVisionOverlay(g2d, view);
+      renderPlayerVisionOverlay(graphics, playerView);
       timer.stop("visionOverlayPlayer");
     }
     timer.start("overlays");
@@ -1292,19 +1293,19 @@ public class ZoneRenderer extends JComponent
         msg = "overlays:" + overlay.getClass().getSimpleName();
         timer.start(msg);
       }
-      overlay.paintOverlay(this, g2d);
+      overlay.paintOverlay(this, graphics);
       if (timer.isEnabled()) timer.stop(msg);
     }
     timer.stop("overlays");
 
     timer.start("renderCoordinates");
-    renderCoordinates(g2d, view);
+    renderCoordinates(graphics, playerView);
     timer.stop("renderCoordinates");
 
     timer.start("lightSourceIconOverlay.paintOverlay");
     if (Zone.Layer.TOKEN.isEnabled()) {
-      if (view.isGMView() && AppState.isShowLightSources()) {
-        lightSourceIconOverlay.paintOverlay(this, g2d);
+      if (playerView.isGMView() && AppState.isShowLightSources()) {
+        lightSourceIconOverlay.paintOverlay(this, graphics);
       }
     }
     timer.stop("lightSourceIconOverlay.paintOverlay");
@@ -1318,9 +1319,9 @@ public class ZoneRenderer extends JComponent
     // zoneScale.getOffsetY()));
     // g2d.draw(area);
     // }
-    SwingUtil.restoreAntiAliasing(g2d, oldAA);
+    SwingUtil.restoreAntiAliasing(graphics, savedAA);
     if (resetClip) {
-      g2d.setClip(null);
+      graphics.setClip(null);
     }
   }
 
