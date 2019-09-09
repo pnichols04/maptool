@@ -104,15 +104,15 @@ public class Scale implements Serializable {
     return scale;
   }
 
-  public void setScale(double scale) {
-    if (scale <= 0.0) {
+  public void setScale(double newScale) {
+    if (newScale <= 0.0) {
       return;
     }
 
     // Determine zoomLevel appropriate for given scale
-    zoomLevel = (int) Math.round(Math.log(scale / oneToOneScale) / Math.log(1 + scaleIncrement));
+    zoomLevel = (int) Math.round(Math.log(newScale / oneToOneScale) / Math.log(1 + scaleIncrement));
 
-    setScaleNoZoomLevel(scale);
+    setScaleNoZoomLevel(newScale);
   }
 
   private void setScaleNoZoomLevel(double scale) {
@@ -126,25 +126,33 @@ public class Scale implements Serializable {
     return oneToOneScale;
   }
 
+  /**
+   * Resets the scale to 1:1.
+   */
   public double reset() {
     double oldScale = this.scale;
-    scale = oneToOneScale;
-    zoomLevel = 0;
-
-    getPropertyChangeSupport().firePropertyChange(PROPERTY_SCALE, oldScale, scale);
+    // [PNICHOLS04] Rather than setting `scale` directly, this is changed to call `setScale(Scale)`, to allow events to
+    // be raised.
+    setScale(oneToOneScale);
     return oldScale;
   }
 
-  public double scaleUp() {
+  /**
+   * Scales up, according to the configured {@code scaleIncrement).
+   */
+  // [PNICHOLS04] The return value is never used.  It is removed to simplify the class's surface.
+  public void scaleUp() {
     zoomLevel++;
     setScaleNoZoomLevel(oneToOneScale * Math.pow(1 + scaleIncrement, zoomLevel));
-    return scale;
   }
 
-  public double scaleDown() {
+  /**
+   * Scales down, according to the configured {@code scaleIncrement}.
+   */
+  // [PNICHOLS04] The return value is never used.  It is removed to simplify the class's surface.
+  public void scaleDown() {
     zoomLevel--;
     setScaleNoZoomLevel(oneToOneScale * Math.pow(1 + scaleIncrement, zoomLevel));
-    return scale;
   }
 
   public void zoomReset(int x, int y) {

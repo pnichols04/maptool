@@ -1217,6 +1217,11 @@ public class Zone extends BaseModel {
     return tokenMap.get(id);
   }
 
+  public boolean hasToken(GUID id) {
+    // Added for expressiveness in locations that would otherwise do `getToken(id) != null`
+    return tokenMap.containsKey(id);
+  }
+
   /** Returns the first token with a given name. The name is matched case-insensitively. */
   public Token getTokenByName(String name) {
     for (Token token : getAllTokens()) {

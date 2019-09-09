@@ -53,26 +53,17 @@ import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.math.BigDecimal;
 import java.text.NumberFormat;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.ListIterator;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.Set;
-import java.util.TooManyListenersException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import javax.imageio.ImageIO;
 import javax.swing.JComponent;
 import javax.swing.SwingUtilities;
+import javax.validation.constraints.NotNull;
+
 import net.rptools.lib.CodeTimer;
 import net.rptools.lib.MD5Key;
 import net.rptools.lib.image.ImageUtil;
@@ -152,6 +143,8 @@ public class ZoneRenderer extends JComponent
   private static LightSourceIconOverlay lightSourceIconOverlay = new LightSourceIconOverlay();
   protected Zone zone;
   private final ZoneView zoneView;
+  private final PropertyChangeListener zoneScaleChangeListener;
+  @NotNull
   private Scale zoneScale;
   private final DrawableRenderer backgroundDrawableRenderer = new PartitionedDrawableRenderer();
   private final DrawableRenderer objectDrawableRenderer = new PartitionedDrawableRenderer();
@@ -160,6 +153,7 @@ public class ZoneRenderer extends JComponent
   private final List<ZoneOverlay> overlayList = new ArrayList<ZoneOverlay>();
   private final Map<Zone.Layer, List<TokenLocation>> tokenLocationMap =
       new HashMap<Zone.Layer, List<TokenLocation>>();
+  @NotNull
   private Set<GUID> selectedTokenSet = new LinkedHashSet<GUID>();
   private boolean keepSelectedTokenSet = false;
   private final List<Set<GUID>> selectedTokenSetHistory = new ArrayList<Set<GUID>>();
@@ -226,6 +220,21 @@ public class ZoneRenderer extends JComponent
     zone.addModelChangeListener(new ZoneModelChangeListener());
 
     setFocusable(true);
+    // [PNICHOLS04]  This is being promoted to a field so that it can be removed when zoneScale is
+    // set.  The logic of the existing method is preserved with a new null guard, even if it looks
+    // overengineered.
+    zoneScaleChangeListener = (evt) -> {
+      switch(Optional.of(evt.getPropertyName()).orElse("")) {
+        case Scale.PROPERTY_SCALE:
+          tokenLocationCache.clear();
+          flushFog = true;
+          break;
+        default:
+          break;
+      }
+      visibleScreenArea = null;
+      repaint();
+    };
     setZoneScale(new Scale());
     zoneView = new ZoneView(zone);
 
@@ -317,24 +326,17 @@ public class ZoneRenderer extends JComponent
     return zoneScale;
   }
 
-  public void setZoneScale(Scale scale) {
-    zoneScale = scale;
+  public void setZoneScale(@NotNull Scale newScale) {
+    if(Objects.isNull(newScale)) {
+      throw new NullPointerException("`ZoneRenderer.setScale(Scale)` was passed a null value.");
+    }
+    var oldScale = zoneScale;
+    zoneScale = newScale;
+    if(!Objects.isNull(oldScale)) {
+      oldScale.removePropertyChangeListener(zoneScaleChangeListener);
+    }
+    zoneScale.addPropertyChangeListener(zoneScaleChangeListener);
     invalidateCurrentViewCache();
-
-    scale.addPropertyChangeListener(
-        new PropertyChangeListener() {
-          public void propertyChange(PropertyChangeEvent evt) {
-            if (Scale.PROPERTY_SCALE.equals(evt.getPropertyName())) {
-              tokenLocationCache.clear();
-              flushFog = true;
-            }
-            if (Scale.PROPERTY_OFFSET.equals(evt.getPropertyName())) {
-              // flushFog = true;
-            }
-            visibleScreenArea = null;
-            repaint();
-          }
-        });
   }
 
   /**
@@ -617,7 +619,8 @@ public class ZoneRenderer extends JComponent
 
     setViewOffset(x, y);
 
-    repaint();
+    // [PNICHOLS04] This is redundant; setViewOffset triggers the listener on zoneScale, which calls repaint.
+    // repaint();
   }
 
   public void centerOn(CellPoint point) {
@@ -829,24 +832,15 @@ public class ZoneRenderer extends JComponent
    * @return
    */
   public PlayerView getPlayerView(Player.Role role) {
-    List<Token> selectedTokens = null;
-    if (getSelectedTokenSet() != null && !getSelectedTokenSet().isEmpty()) {
-      selectedTokens = getSelectedTokensList();
-      for (ListIterator<Token> iter = selectedTokens.listIterator(); iter.hasNext(); ) {
-        Token token = iter.next();
-        if (!token.getHasSight() || !AppUtil.playerOwns(token)) {
-          iter.remove();
-        }
-      }
-    }
-    if (selectedTokens == null || selectedTokens.isEmpty()) {
-      // if no selected token qualifying for view, use owned tokens or player tokens with sight
-      final boolean checkOwnership =
-          MapTool.getServerPolicy().isUseIndividualViews() || MapTool.isPersonalServer();
-      selectedTokens =
-          checkOwnership
-              ? zone.getOwnedTokensWithSight(MapTool.getPlayer())
-              : zone.getPlayerTokensWithSight();
+    // [PNICHOLS04] selectedTokenSet is only assigned during initialization; it will never be null.
+    List<Token> selectedTokens;
+    selectedTokens = getSelectedTokensList().stream()
+        .filter(token -> token.getHasSight() && AppUtil.playerOwns(token))
+        .collect(Collectors.toList());
+    if(selectedTokens.isEmpty()) {
+      selectedTokens = MapTool.getServerPolicy().isUseIndividualViews() || MapTool.isPersonalServer()
+        ? zone.getOwnedTokensWithSight(MapTool.getPlayer())
+        : zone.getPlayerTokensWithSight();
     }
     return new PlayerView(role, selectedTokens);
   }
@@ -863,14 +857,11 @@ public class ZoneRenderer extends JComponent
    * @return a new Rectangle with the bounding box of all the elements in the Zone
    */
   public Rectangle zoneExtents(PlayerView view) {
-    // Can't initialize extents to any set x/y values, because
-    // we don't know if the actual map contains that x/y.
-    // So we need a flag to say extents is 'unset', and the best I
-    // could come up with is checking for 'null' on each loop iteration.
-    Rectangle extents = null;
+    // [PNICHOLS04] We initialize to an empty rectangle.
+    Rectangle extents = new Rectangle();
 
     // We don't iterate over the layers in the same order as rendering
-    // because its cleaner to group them by type and the order doesn't matter.
+    // because it's cleaner to group them by type and the order doesn't matter.
 
     // First background image extents
     // TODO: when the background image can be resized, fix this!
@@ -883,97 +874,98 @@ public class ZoneRenderer extends JComponent
               ImageManager.getImage(zone.getMapAssetId(), this).getHeight());
     }
     // next, extents of drawing objects
-    List<DrawnElement> drawableList = new LinkedList<DrawnElement>();
-    drawableList.addAll(zone.getBackgroundDrawnElements());
-    drawableList.addAll(zone.getObjectDrawnElements());
-    drawableList.addAll(zone.getDrawnElements());
-    if (view.isGMView()) {
-      drawableList.addAll(zone.getGMDrawnElements());
-    }
-    for (DrawnElement element : drawableList) {
-      Drawable drawable = element.getDrawable();
-      Rectangle drawnBounds = new Rectangle(drawable.getBounds());
-
-      // Handle pen size
-      // This slightly over-estimates the size of the pen, but we want to
-      // make sure to include the anti-aliased edges.
-      Pen pen = element.getPen();
-      int penSize = (int) Math.ceil((pen.getThickness() / 2) + 1);
-      drawnBounds.setBounds(
-          drawnBounds.x - penSize,
-          drawnBounds.y - penSize,
-          drawnBounds.width + (penSize * 2),
-          drawnBounds.height + (penSize * 2));
-
-      if (extents == null) extents = drawnBounds;
-      else extents.add(drawnBounds);
+    // [PNICHOLS04] Changed to a stream reduction to avoid two iterations over each list (one to concatenate them, and
+    // another to visit them).
+    var drawableBounds = Stream.concat(
+      Stream.concat(zone.getBackgroundDrawnElements().stream(),
+            zone.getObjectDrawnElements().stream()),
+      Stream.concat(zone.getDrawnElements().stream(),
+        view.isGMView() ? zone.getGMDrawnElements().stream() : Stream.empty()))
+          .collect(
+                /* accumulator */ Rectangle::new,
+                /* reducer */ (bounds, element) -> {
+                  var drawable = element.getDrawable();
+                  var drawnBounds = new Rectangle(drawable.getBounds());
+                  // Handle pen size
+                  // This slightly over-estimates the size of the pen, but we want to
+                  // make sure to include the anti-aliased edges.
+                  Pen pen = element.getPen();
+                  int penSize = (int) Math.ceil((pen.getThickness() / 2) + 1);
+                  drawnBounds.grow(penSize, penSize);
+                  if(bounds.isEmpty()) {
+                    bounds = drawnBounds;
+                  } else {
+                    bounds.add(drawnBounds);
+                  }
+                },
+                /* combiner */ Rectangle::add);
+    if(extents.isEmpty()) {
+      extents = drawableBounds;
+    } else {
+      extents.add(drawableBounds);
     }
     // now, add the stamps/tokens
-    // tokens and stamps are the same thing, just treated differently
-
-    // This loop structure is a hack: but the getStamps-type methods return unmodifiable lists,
-    // so we can't concat them, and there are a fixed number of layers, so its not really extensible
-    // anyway.
-    for (int layer = 0; layer < 4; layer++) {
-      List<Token> stampList = null;
-      switch (layer) {
-        case 0:
-          stampList = zone.getBackgroundStamps();
-          break; // background layer
-        case 1:
-          stampList = zone.getStampTokens();
-          break; // object layer
-        case 2:
-          if (!view.isGMView()) { // hidden layer
-            continue;
-          } else {
-            stampList = zone.getGMStamps();
-            break;
-          }
-        case 3:
-          stampList = zone.getTokens();
-          break; // token layer
-      }
-      for (Token element : stampList) {
-        Rectangle drawnBounds = element.getBounds(zone);
-        if (element.hasFacing()) {
-          // Get the facing and do a quick fix to make the math easier: -90 is 'unrotated' for some
-          // reason
-          Integer facing = element.getFacing() + 90;
-          if (facing > 180) {
-            facing -= 360;
-          }
-          // if 90 degrees, just swap w and h
-          // also swap them if rotated more than 90 (optimization for non-90deg rotations)
-          if (facing != 0 && facing != 180) {
-            if (Math.abs(facing) >= 90) {
-              drawnBounds.setSize(drawnBounds.height, drawnBounds.width); // swapping h and w
-            }
-            // if rotated to non-axis direction, assume the worst case 45 deg
-            // also assumes the rectangle rotates around its center
-            // This will usually makes the bounds bigger than necessary, but its quick.
-            // Also, for quickness, we assume its a square token using the larger dimension
-            // At 45 deg, the bounds of the square will be sqrt(2) bigger, and the UL corner will
-            // shift by 1/2 of the length.
-            // The size increase is: (sqrt*(2) - 1) * size ~= 0.42 * size.
-            if (facing != 0 && facing != 180 && facing != 90 && facing != -90) {
-              Integer size = Math.max(drawnBounds.width, drawnBounds.height);
-              Integer x = drawnBounds.x - (int) (0.21 * size);
-              Integer y = drawnBounds.y - (int) (0.21 * size);
-              Integer w = drawnBounds.width + (int) (0.42 * size);
-              Integer h = drawnBounds.height + (int) (0.42 * size);
-              drawnBounds.setBounds(x, y, w, h);
-            }
-          }
-        }
-        // TODO: Handle auras here?
-        if (extents == null) extents = drawnBounds;
-        else extents.add(drawnBounds);
-      }
+    var stampsBounds = Stream.concat(
+          Stream.concat(zone.getBackgroundStamps().stream(),
+                zone.getStampTokens().stream()),
+          Stream.concat(zone.getTokens().stream(),
+                view.isGMView() ? zone.getGMStamps().stream() : Stream.empty()))
+          .collect(
+                /* accumulator */ Rectangle::new,
+                /* reducer */ (accumulator, element) -> {
+                  Rectangle drawnBounds = element.getBounds(zone);
+                  if (element.hasFacing()) {
+                    // Get the facing and do a quick fix to make the math easier: -90 is 'unrotated' for some
+                    // reason
+                    int facing = element.getFacing() + 90;
+                    if (facing > 180) {
+                      facing -= 360;
+                    }
+                    // if 90 degrees, just swap w and h
+                    // also swap them if rotated more than 90 (optimization for non-90deg rotations)
+                    if (facing != 0 && facing != 180) {
+                      if (Math.abs(facing) >= 90) {
+                        //noinspection SuspiciousNameCombination
+                        drawnBounds.setSize(drawnBounds.height, drawnBounds.width); // swapping h and w
+                      }
+                      // if rotated to non-axis direction, assume the worst case 45 deg
+                      // also assumes the rectangle rotates around its center
+                      // This will usually makes the bounds bigger than necessary, but its quick.
+                      // Also, for quickness, we assume its a square token using the larger dimension
+                      // At 45 deg, the bounds of the square will be sqrt(2) bigger, and the UL corner will
+                      // shift by 1/2 of the length.
+                      // The size increase is: (sqrt*(2) - 1) * size ~= 0.42 * size.
+                      if (facing != 0 && facing != 180 && facing != 90 && facing != -90) {
+                        Integer size = Math.max(drawnBounds.width, drawnBounds.height);
+                        Integer x = drawnBounds.x - (int) (0.21 * size);
+                        Integer y = drawnBounds.y - (int) (0.21 * size);
+                        Integer w = drawnBounds.width + (int) (0.42 * size);
+                        Integer h = drawnBounds.height + (int) (0.42 * size);
+                        drawnBounds.setBounds(x, y, w, h);
+                      }
+                    }
+                  }
+                  // TODO: Handle auras here?
+                  if (accumulator.isEmpty()) {
+                    accumulator = drawnBounds;
+                  } else {
+                    accumulator.add(drawnBounds);
+                  }
+                },
+                /* combiner */ Rectangle::add
+          );
+    if(extents.isEmpty()) {
+      extents = stampsBounds;
+    } else {
+      extents.add(stampsBounds);
     }
+
     if (zone.hasFog()) {
-      if (extents == null) extents = fogExtents();
-      else extents.add(fogExtents());
+      if (extents.isEmpty()) {
+        extents = fogExtents();
+      } else {
+        extents.add(fogExtents());
+      }
     }
     // TODO: What are token templates?
     // renderTokenTemplates(g2d, view);
@@ -3611,17 +3603,10 @@ public class ZoneRenderer extends JComponent
    * @return List<Token>
    */
   public List<Token> getSelectedTokensList() {
-    List<Token> tokenList = new ArrayList<Token>();
-
-    for (GUID g : selectedTokenSet) {
-      if (zone.getToken(g) != null) {
-        tokenList.add(zone.getToken(g));
-      }
-    }
-    // Commented out to preserve selection order
-    // Collections.sort(tokenList, Token.NAME_COMPARATOR);
-
-    return tokenList;
+    return selectedTokenSet.stream()
+          .filter(id -> zone.hasToken(id))
+          .map(id -> zone.getToken(id))
+          .collect(Collectors.toList());
   }
 
   public boolean isTokenSelectable(GUID tokenGUID) {
