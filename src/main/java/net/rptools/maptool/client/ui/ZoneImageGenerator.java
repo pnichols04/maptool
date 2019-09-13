@@ -128,8 +128,9 @@ public class ZoneImageGenerator extends BufferedImage {
     // make a tiny buffered image for this (hopefully) small rectangle request
     BufferedImage image = new BufferedImage(rect.width, rect.height, super.getType());
     Graphics2D g = image.createGraphics();
+    // [PNICHOLS04] Fix this so it works again.
     g.setClip(0, 0, rect.width, rect.height);
-    renderer.renderZone(g, view);
+    //renderer.renderZone(g, view);
     // dispose is probably not needed. According to javadocs g's are disposed automatically when
     // used in paint()
     g.dispose();

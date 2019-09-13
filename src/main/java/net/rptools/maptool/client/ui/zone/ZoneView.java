@@ -37,6 +37,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Stream;
 import javax.swing.SwingWorker;
 import net.rptools.maptool.client.AppState;
 import net.rptools.maptool.client.AppUtil;
@@ -606,38 +607,27 @@ public class ZoneView implements ModelChangeListener {
 
     // Calculate it
     final boolean isGMview = view.isGMView();
+    List<Token> tokenList;
+    if(view.isUsingTokenView()) {
+      tokenList = view.getTokens();
+    } else {
+      tokenList = new ArrayList<>();
+      for(Token token : zone.getAllTokens()) {
+        if(token.isToken() && token.getHasSight() && (isGMview || token.isVisible())) {
+          tokenList.add(token);
+        }
+      }
+    }
     final boolean checkOwnership =
-        MapTool.getServerPolicy().isUseIndividualViews() || MapTool.isPersonalServer();
-    List<Token> tokenList =
-        view.isUsingTokenView()
-            ? view.getTokens()
-            : zone.getTokensFiltered(
-                new Filter() {
-                  public boolean matchToken(Token t) {
-                    return t.isToken() && t.getHasSight() && (isGMview || t.isVisible());
-                  }
-                });
-
+          MapTool.getServerPolicy().isUseIndividualViews() || MapTool.isPersonalServer();
     for (Token token : tokenList) {
-      boolean weOwnIt = AppUtil.playerOwns(token);
-      // Permission
-      if (checkOwnership) {
-        if (!weOwnIt) {
-          continue;
+      if(((checkOwnership || token.isVisibleOnlyToOwner()) && AppUtil.playerOwns(token))
+            || token.getType() == Token.Type.PC
+            || isGMview) {
+        Area tokenVision = getVisibleArea(token);
+        if (tokenVision != null) {
+          meta.visibleArea.add(tokenVision);
         }
-      } else {
-        // If we're viewing the map as a player and the token is not a PC, then skip it.
-        if (!isGMview && (token.getType() != Token.Type.PC)) {
-          continue;
-        }
-      }
-      // player ownership permission
-      if (token.isVisibleOnlyToOwner() && !weOwnIt) {
-        continue;
-      }
-      Area tokenVision = getVisibleArea(token);
-      if (tokenVision != null) {
-        meta.visibleArea.add(tokenVision);
       }
     }
 

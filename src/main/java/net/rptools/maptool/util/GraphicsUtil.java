@@ -447,4 +447,24 @@ public class GraphicsUtil {
     f.setVisible(true);
     // System.out.println(area.equals(area2));
   }
+
+  private static final double PI_DIVIDED_BY_NEGATIVE_180 = -0.01745329251;
+  private static final double PI_DIVIDED_BY_2 = 1.57079632679;
+  private static final double TAU = 6.28318530718;
+
+  /**
+   * Converts a compass heading in degrees to a graphics rotation in radians.
+   * <p>Token facings headings are specified with 0° in the down direction and with positive angles
+   * measuring a clockwise turn.  Graphics rotations are specified with 0° aligning
+   * to the positive <i>x</i>-axis and positive angles measuring a counterclockwise turn; additionally, they are
+   * typically measured in radians.  This method converts between the two systems.</p>
+   * @param degrees  The token facing to convert, in degrees clockwise from north.
+   * @return  The equivalent graphics rotation, in radians counterclockwise from the positive <i>x</i>-axis.
+   */
+  public static double tokenFacingToGraphicsRotation(double degrees) {
+    var radians = PI_DIVIDED_BY_NEGATIVE_180 * degrees - PI_DIVIDED_BY_2;
+    // Canonicalize the output in the range [0.0..2π]
+    return (radians < 0.0) ? -1.0 * (radians % TAU) : radians % TAU;
+  }
+
 }

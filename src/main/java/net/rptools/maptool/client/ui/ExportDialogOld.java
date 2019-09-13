@@ -675,11 +675,13 @@ public class ExportDialogOld extends JDialog {
         EventQueue.invokeAndWait(
             new Runnable() {
               public void run() {
-                renderer.renderZone(g, view);
+                // [PNICHOLS04] Fix this so it works again.
+                //renderer.renderZone(g, view);
               }
             });
       } else {
-        renderer.renderZone(g, view);
+        // [PNICHOLS04] Fix this so it works again.
+        // renderer.renderZone(g, view);
       }
       return image;
     } catch (OutOfMemoryError me) {

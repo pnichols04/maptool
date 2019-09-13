@@ -592,7 +592,8 @@ public class ExportDialog extends JDialog implements IIOWriteProgressListener {
                         renderer.getWidth(), renderer.getHeight(), Transparency.OPAQUE);
                 final Graphics2D g = image.createGraphics();
                 // g.setClip(0, 0, renderer.getWidth(), renderer.getHeight());
-                renderer.renderZone(g, view);
+                // TODO: [PNICHOLS04] Fix this so it works again
+                // renderer.renderZone(g, view);
                 g.dispose();
               } else {
                 image = new ZoneImageGenerator(renderer, view);

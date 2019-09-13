@@ -276,7 +276,7 @@ public class FogUtil {
     Set<GUID> tokenSet = new HashSet<GUID>();
 
     // Jamz: Possibly pass a variable to override buttons? Also, maybe add a return a list of ID's
-    List<Token> tokList = renderer.getZone().getOwnedTokensWithSight(MapTool.getPlayer());
+    List<Token> tokList = renderer.getZone().getOwnedTokensWithSight();
 
     for (Token token : tokList) tokenSet.add(token.getId());
 

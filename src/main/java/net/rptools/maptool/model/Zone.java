@@ -31,6 +31,8 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Predicate;
+
 import net.rptools.lib.MD5Key;
 import net.rptools.maptool.client.AppUtil;
 import net.rptools.maptool.client.MapTool;
@@ -1301,10 +1303,6 @@ public class Zone extends BaseModel {
     return tokenOrderedList.size();
   }
 
-  public List<Token> getAllTokens() {
-    return Collections.unmodifiableList(new ArrayList<Token>(tokenOrderedList));
-  }
-
   public Set<MD5Key> getAllAssetIds() {
     Set<MD5Key> idSet = new HashSet<MD5Key>();
 
@@ -1357,28 +1355,38 @@ public class Zone extends BaseModel {
     return Collections.unmodifiableList(originalList);
   }
 
-  /** This is the list of non-stamp tokens, both pc and npc */
-  public List<Token> getTokens() {
-    return getTokens(true);
+  /** Gets a read-only {@link List} representing all  of the tokens in the zone. */
+  public List<Token> getAllTokens() {
+    log.info(String.format("%s called from %s.", new Object() {}.getClass().getEnclosingMethod().getName(), new Throwable().getStackTrace()[1].getMethodName()));
+return Collections.unmodifiableList(tokenOrderedList);
   }
 
-  public List<Token> getTokens(boolean getAlwaysVisible) {
-    return getTokensFiltered(
+  /** This is the list of non-stamp tokens, both pc and npc */
+  public List<Token> getTokens() {
+    log.info(String.format("%s called from %s.", new Object() {}.getClass().getEnclosingMethod().getName(), new Throwable().getStackTrace()[1].getMethodName()));
+return getTokens(true);
+  }
+
+  public List<Token> getTokens(boolean getOnlyAlwaysVisible) {
+    log.info(String.format("%s called from %s.", new Object() {}.getClass().getEnclosingMethod().getName(), new Throwable().getStackTrace()[1].getMethodName()));
+return getTokensFiltered(
         new Filter() {
           @Override
           public boolean matchToken(Token t) {
-            if (getAlwaysVisible) return !t.isStamp();
+            if (getOnlyAlwaysVisible) return !t.isStamp();
             else return !t.isStamp() && !t.isAlwaysVisible();
           }
         });
   }
 
   public List<Token> getGMStamps() {
-    return getGMStamps(true);
+    log.info(String.format("%s called from %s.", new Object() {}.getClass().getEnclosingMethod().getName(), new Throwable().getStackTrace()[1].getMethodName()));
+return getGMStamps(true);
   }
 
   public List<Token> getGMStamps(boolean getAlwaysVisible) {
-    return getTokensFiltered(
+    log.info(String.format("%s called from %s.", new Object() {}.getClass().getEnclosingMethod().getName(), new Throwable().getStackTrace()[1].getMethodName()));
+return getTokensFiltered(
         new Filter() {
           @Override
           public boolean matchToken(Token t) {
@@ -1389,11 +1397,13 @@ public class Zone extends BaseModel {
   }
 
   public List<Token> getStampTokens() {
-    return getStampTokens(true);
+    log.info(String.format("%s called from %s.", new Object() {}.getClass().getEnclosingMethod().getName(), new Throwable().getStackTrace()[1].getMethodName()));
+return getStampTokens(true);
   }
 
   public List<Token> getStampTokens(boolean getAlwaysVisible) {
-    return getTokensFiltered(
+    log.info(String.format("%s called from %s.", new Object() {}.getClass().getEnclosingMethod().getName(), new Throwable().getStackTrace()[1].getMethodName()));
+return getTokensFiltered(
         new Filter() {
           @Override
           public boolean matchToken(Token t) {
@@ -1404,11 +1414,13 @@ public class Zone extends BaseModel {
   }
 
   public List<Token> getBackgroundStamps() {
-    return getBackgroundStamps(true);
+    log.info(String.format("%s called from %s.", new Object() {}.getClass().getEnclosingMethod().getName(), new Throwable().getStackTrace()[1].getMethodName()));
+return getBackgroundStamps(true);
   }
 
   public List<Token> getBackgroundStamps(boolean getAlwaysVisible) {
-    return getTokensFiltered(
+    log.info(String.format("%s called from %s.", new Object() {}.getClass().getEnclosingMethod().getName(), new Throwable().getStackTrace()[1].getMethodName()));
+return getTokensFiltered(
         new Filter() {
           @Override
           public boolean matchToken(Token t) {
@@ -1419,7 +1431,8 @@ public class Zone extends BaseModel {
   }
 
   public List<Token> getPlayerTokens() {
-    return getTokensFiltered(
+    log.info(String.format("%s called from %s.", new Object() {}.getClass().getEnclosingMethod().getName(), new Throwable().getStackTrace()[1].getMethodName()));
+return getTokensFiltered(
         new Filter() {
           @Override
           public boolean matchToken(Token t) {
@@ -1429,7 +1442,8 @@ public class Zone extends BaseModel {
   }
 
   public List<Token> getFigureTokens() {
-    return getTokensFiltered(
+    log.info(String.format("%s called from %s.", new Object() {}.getClass().getEnclosingMethod().getName(), new Throwable().getStackTrace()[1].getMethodName()));
+return getTokensFiltered(
         new Filter() {
           @Override
           public boolean matchToken(Token t) {
@@ -1439,7 +1453,8 @@ public class Zone extends BaseModel {
   }
 
   public List<Token> getTokensAlwaysVisible() {
-    return getTokensFiltered(
+    log.info(String.format("%s called from %s.", new Object() {}.getClass().getEnclosingMethod().getName(), new Throwable().getStackTrace()[1].getMethodName()));
+return getTokensFiltered(
         new Filter() {
           @Override
           public boolean matchToken(Token t) {
@@ -1449,7 +1464,8 @@ public class Zone extends BaseModel {
   }
 
   public List<Token> getTokensWithVBL() {
-    return getTokensFiltered(
+    log.info(String.format("%s called from %s.", new Object() {}.getClass().getEnclosingMethod().getName(), new Throwable().getStackTrace()[1].getMethodName()));
+return getTokensFiltered(
         new Filter() {
           @Override
           public boolean matchToken(Token t) {
@@ -1459,7 +1475,8 @@ public class Zone extends BaseModel {
   }
 
   public List<Token> getTokensWithTerrainModifiers() {
-    return getTokensFiltered(
+    log.info(String.format("%s called from %s.", new Object() {}.getClass().getEnclosingMethod().getName(), new Throwable().getStackTrace()[1].getMethodName()));
+return getTokensFiltered(
         new Filter() {
           @Override
           public boolean matchToken(Token t) {
@@ -1469,50 +1486,49 @@ public class Zone extends BaseModel {
   }
 
   /**
-   * This method is called when no tokens are selected and it determines which tokens FoW to show.
-   * New buttons were added to select what type of tokens, by ownership, should be shown and driven
-   * by the TokenSelection enum.
-   *
-   * @author updated by Jamz
-   * @since updated 1.4.1.0
-   * @param Player p
-   * @return
+   * Predicates tokens if they are owned tokens with sight.
    */
-  public List<Token> getOwnedTokensWithSight(Player p) {
-    return getTokensFiltered(
-        new Filter() {
-          public boolean matchToken(Token t) {
-            // System.out.println("isOwnedByAll(): " + t.getName() + ":" + t.isOwnedByAll());
-            // System.out.println("AppUtil.playerOwns(t): " + t.getName() + ":" +
-            // AppUtil.playerOwns(t));
-            // return t.getType() == Token.Type.PC && t.getHasSight() && AppUtil.playerOwns(t);
+  public boolean isOwnedTokenWithSight(Token t) {
+    // [PNICHOLS04] I am elevating this to support the changes in `ZoneRenderer.renderZone` relative to reducing the
+    // the number of iterations over the token list.
+    if (tokenSelection == null) tokenSelection = TokenSelection.ALL;
+    // System.out.println("TokenSelection: " + tokenSelection);
+    switch (tokenSelection) {
+      case NPC: // Show FoW for only NPC Tokens I own
+        return t.getHasSight()
+              && t.getType() == Token.Type.NPC
+              && (t.isOwnedByAll() || AppUtil.playerOwns(t));
+      case PC: // Show FoW for only PC Tokens I own
+        return t.getHasSight()
+              && t.getType() == Token.Type.PC
+              && (t.isOwnedByAll() || AppUtil.playerOwns(t));
+      case GM: // Show FoW for ANY Token the GM "username" explicitly owns OR has no
+        // ownership
+        return t.getHasSight() && AppUtil.gmOwns(t);
+      case ALL:
+      default: // Show FoW for ANY Token I own
+        return t.getHasSight() && AppUtil.playerOwns(t);
+    }
+  };
 
-            if (tokenSelection == null) tokenSelection = TokenSelection.ALL;
-            // System.out.println("TokenSelection: " + tokenSelection);
-            switch (tokenSelection) {
-              case ALL: // Show FoW for ANY Token I own
-                return t.getHasSight() && AppUtil.playerOwns(t);
-              case NPC: // Show FoW for only NPC Tokens I own
-                return t.getHasSight()
-                    && t.getType() == Token.Type.NPC
-                    && (t.isOwnedByAll() || AppUtil.playerOwns(t));
-              case PC: // Show FoW for only PC Tokens I own
-                return t.getHasSight()
-                    && t.getType() == Token.Type.PC
-                    && (t.isOwnedByAll() || AppUtil.playerOwns(t));
-              case GM: // Show FoW for ANY Token the GM "username" explicitly owns OR has no
-                // ownership
-                return t.getHasSight() && AppUtil.gmOwns(t);
-              default: // Show FoW for ANY Token I own
-                return t.getHasSight() && AppUtil.playerOwns(t);
-            }
-          }
-        });
+  /**
+ * This method is called when no tokens are selected and it determines which tokens FoW to show.
+ * New buttons were added to select what type of tokens, by ownership, should be shown and driven
+ * by the TokenSelection enum.
+ *
+ * @author updated by Jamz
+ * @since updated 1.4.1.0
+ * @param Player p
+ * @return
+ */
+  public List<Token> getOwnedTokensWithSight() {
+    return getTokensFiltered(this::isOwnedTokenWithSight);
   }
 
   // Jamz: For FogUtil.exposePCArea to skip sight test.
   public List<Token> getPlayerTokensWithSight() {
-    return getTokensFiltered(
+    log.info(String.format("%s called from %s.", new Object() {}.getClass().getEnclosingMethod().getName(), new Throwable().getStackTrace()[1].getMethodName()));
+return getTokensFiltered(
         new Filter() {
           public boolean matchToken(Token t) {
             return t.getType() == Token.Type.PC && t.getHasSight();
@@ -1524,7 +1540,8 @@ public class Zone extends BaseModel {
   // All",
   // or "Owned" by the current player; in theory, NPC tokens the Player control.
   public List<Token> getTokensOwnedByAllWithSight() {
-    return getTokensFiltered(
+    log.info(String.format("%s called from %s.", new Object() {}.getClass().getEnclosingMethod().getName(), new Throwable().getStackTrace()[1].getMethodName()));
+return getTokensFiltered(
         new Filter() {
           // String playerId = MapTool.getPlayer().getName();
           public boolean matchToken(Token t) {
@@ -1538,7 +1555,8 @@ public class Zone extends BaseModel {
   // All",
   // or "Owned" by the current player; in theory, NPC tokens the Player control.
   public List<Token> getTokensOwnedByAllWithSight(Player p) {
-    return getTokensFiltered(
+    log.info(String.format("%s called from %s.", new Object() {}.getClass().getEnclosingMethod().getName(), new Throwable().getStackTrace()[1].getMethodName()));
+return getTokensFiltered(
         new Filter() {
           String playerId = MapTool.getPlayer().getName();
 
@@ -1550,7 +1568,8 @@ public class Zone extends BaseModel {
   }
 
   public List<Token> getPlayerOwnedTokensWithSight(Player p) {
-    return getTokensFiltered(
+    log.info(String.format("%s called from %s.", new Object() {}.getClass().getEnclosingMethod().getName(), new Throwable().getStackTrace()[1].getMethodName()));
+return getTokensFiltered(
         new Filter() {
           @Override
           public boolean matchToken(Token t) {

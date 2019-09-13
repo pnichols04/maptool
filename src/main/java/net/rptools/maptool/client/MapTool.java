@@ -583,7 +583,8 @@ public class MapTool {
         EventQueue.invokeAndWait(
             new Runnable() {
               public void run() {
-                renderer.renderZone(g, view);
+                // [PNICHOLS04] Fix this so it works again.
+                // renderer.renderZone(g, view);
               }
             });
       } catch (InterruptedException ie) {
@@ -592,7 +593,8 @@ public class MapTool {
         MapTool.showError("While creating snapshot", ite);
       }
     } else {
-      renderer.renderZone(g, view);
+      // [PNICHOLS04] Fix this so it works again.
+      // renderer.renderZone(g, view);
     }
 
     g.dispose();
