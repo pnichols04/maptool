@@ -1041,6 +1041,12 @@ public class ZoneRenderer extends JComponent
       transform.scale(scale, scale);
       return transform;
     }
+
+    @Override
+    public String toString() {
+      return String.format("[displayWidth=%d, displayHeight=%d, offsetX=%d, offsetY=%d, scale=%.4f, GM=%s]",
+            displayWidth, displayHeight, offsetX, offsetY, scale, playerView.isGMView());
+    }
   }
 
   /**
@@ -2050,7 +2056,7 @@ public class ZoneRenderer extends JComponent
         }
         zoneBoardCache = new Pair<MD5Key, QuadTree<BufferedImageQuadTreeNode>>(
               mapAssetId,
-              new QuadTree<>(0, new Rectangle(zone.getBoardX(), zone.getBoardY(), boardWidth, boardHeight)));
+              QuadTree.of(BufferedImageQuadTreeNode.class, new Rectangle(zone.getBoardX(), zone.getBoardY(), boardWidth, boardHeight)));
         for(int y = 0; y < boardHeight; y += BOARD_TILE_SIZE) {
           for(int x = 0; x < boardWidth; x += BOARD_TILE_SIZE) {
             var boardTile = deviceConfig.createCompatibleImage(BOARD_TILE_SIZE, BOARD_TILE_SIZE, Transparency.TRANSLUCENT);
@@ -2919,7 +2925,7 @@ public class ZoneRenderer extends JComponent
     timer.start("createClip");
     if (renderParameters.playerView.isPCView()
         && visibleScreenArea != null
-        && !tokens.isEmpty()
+        && tokens.size() > 0
         && tokens.get(0).isToken()) {
       Area visibleArea = new Area(renderParameters.graphics.getClipBounds());
       visibleArea.intersect(visibleScreenArea);

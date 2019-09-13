@@ -11,14 +11,20 @@ public class QuadTree<T extends ITwoDimensionalObject> {
 
   private static final Logger log = LogManager.getLogger(QuadTree.class);
 
-
   private static final int MAX_OBJECTS = 10;
   private static final int MAX_LEVELS = 5;
-
+  private static final int QUADRANT_RIGHT_TOP = 0;
+  private static final int QUADRANT_LEFT_TOP = 1;
+  private static final int QUADRANT_LEFT_BOTTOM = 2;
+  private static final int QUADRANT_RIGHT_BOTTOM = 3;
+  private static final int QUADRANT_NONE = -1;
+  private static final String[] QUADRANT_NAMES = new String[]{"right top", "left top", "left bottom", "right bottom"};
+  private final Class<T> containsClass;
   private final int level;
   private final List<T> objects;
   private final Rectangle bounds;
   private final Object[] nodes;
+  private final int quadrant;
 
   /**
    * Initializes a new instance of the {@link QuadTree} class.
@@ -26,11 +32,17 @@ public class QuadTree<T extends ITwoDimensionalObject> {
    * @param withLevel  The level of the {@code QuadTree} being created.
    * @param withBounds The bounds of the {@code QuadTree} being created.
    */
-  public QuadTree(int withLevel, Rectangle withBounds) {
+  private QuadTree(Class<T> forClass, int withLevel, int inQuadrant, Rectangle withBounds) {
+    containsClass = forClass;
     level = withLevel;
+    quadrant = inQuadrant;
     objects = new ArrayList<>();
     bounds = withBounds;
     nodes = new Object[4];
+  }
+
+  public static QuadTree of(Class<? extends ITwoDimensionalObject> forClass, Rectangle withBounds) {
+    return new QuadTree(forClass, 0, QUADRANT_NONE, withBounds);
   }
 
   /**
@@ -48,7 +60,6 @@ public class QuadTree<T extends ITwoDimensionalObject> {
     }
   }
 
-
   /**
    * Splits the {@link QuadTree} node into quads.
    */
@@ -59,13 +70,13 @@ public class QuadTree<T extends ITwoDimensionalObject> {
     var y = (int) bounds.getY();
 
     // Top right
-    nodes[0] = new QuadTree<>(level + 1, new Rectangle(x + subWidth, y, subWidth, subHeight));
+    nodes[QUADRANT_RIGHT_TOP] = new QuadTree<T>(containsClass, level + 1, QUADRANT_RIGHT_TOP, new Rectangle(x + subWidth, y, subWidth, subHeight));
     // Top left
-    nodes[1] = new QuadTree<>(level + 1, new Rectangle(x, y, subWidth, subHeight));
+    nodes[QUADRANT_LEFT_TOP] = new QuadTree<T>(containsClass, level + 1, QUADRANT_LEFT_TOP, new Rectangle(x, y, subWidth, subHeight));
     // Bottom left
-    nodes[2] = new QuadTree<>(level + 1, new Rectangle(x, y + subHeight, subWidth, subHeight));
+    nodes[QUADRANT_LEFT_BOTTOM] = new QuadTree<T>(containsClass, level + 1, QUADRANT_LEFT_BOTTOM, new Rectangle(x, y + subHeight, subWidth, subHeight));
     // Bottom right
-    nodes[3] = new QuadTree<>(level + 1, new Rectangle(x + subWidth, y + subHeight, subWidth, subHeight));
+    nodes[QUADRANT_RIGHT_BOTTOM] = new QuadTree<T>(containsClass, level + 1, QUADRANT_RIGHT_BOTTOM, new Rectangle(x + subWidth, y + subHeight, subWidth, subHeight));
   }
 
   /**
@@ -78,7 +89,7 @@ public class QuadTree<T extends ITwoDimensionalObject> {
    * @return The index of the child node that the bounding box falls within, or -1 if the bounding box cannot fit completely within a child node.
    */
   private int getIndex(int x, int y, int width, int height) {
-    int index = -1;
+    int index = QUADRANT_NONE;
     double verticalMidpoint = bounds.getX() + (bounds.getWidth() / 2);
     double horizontalMidpoint = bounds.getY() + (bounds.getHeight() / 2);
 
@@ -90,17 +101,17 @@ public class QuadTree<T extends ITwoDimensionalObject> {
     // The bounds can completely fit within the left quadrants
     if (x < verticalMidpoint && x + width < verticalMidpoint) {
       if (topQuadrant) {
-        index = 1;
+        index = QUADRANT_LEFT_TOP;
       } else if (bottomQuadrant) {
-        index = 2;
+        index = QUADRANT_LEFT_BOTTOM;
       }
     }
     // The bounds can completely fit within the right quadrants
     else if (x > verticalMidpoint) {
       if (topQuadrant) {
-        index = 0;
+        index = QUADRANT_RIGHT_TOP;
       } else if (bottomQuadrant) {
-        index = 3;
+        index = QUADRANT_RIGHT_BOTTOM;
       }
     }
 
@@ -166,15 +177,24 @@ public class QuadTree<T extends ITwoDimensionalObject> {
     if (index != -1 && nodes[0] != null) {
       @SuppressWarnings("unchecked") final var qt = (QuadTree<T>) nodes[index];
       qt.search(x, y, width, height, results);
-    } else if(nodes[0] != null) {
-      for(int i = 0; i < 4; i++) {
-        @SuppressWarnings("unchecked")
-        final var qt = (QuadTree<T>)nodes[i];
+    } else if (nodes[0] != null) {
+      for (int i = 0; i < 4; i++) {
+        @SuppressWarnings("unchecked") final var qt = (QuadTree<T>) nodes[i];
         qt.search(x, y, width, height, results);
       }
     }
     log.info(String.format("Returned %d objects from level %d of the QuadTree", objects.size(), level));
     results.addAll(objects);
     return results;
+  }
+
+  public String toString() {
+    if (level == 0) {
+      return String.format("{QuadTree<%s> (root).  Objects = %d}", containsClass.getSimpleName(), objects.size());
+    } else if (nodes[0] != null) {
+      return String.format("{QuadTree<%s> (%s branch, level %d).  Objects = %d}", containsClass.getSimpleName(), QUADRANT_NAMES[quadrant], level, objects.size());
+    } else {
+      return String.format("{QuadTree<%s> (%s leaf, level %d).  Objects = %d}", containsClass.getSimpleName(), QUADRANT_NAMES[quadrant], level, objects.size());
+    }
   }
 }
